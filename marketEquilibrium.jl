@@ -199,7 +199,7 @@ function example_2()
     
     # Firm 1
     # utility function
-    f1 = LowerOrEqualThanEquilibriumConstraint([p, q1, lambda1], [1, -2, 1/2], 0)
+    f1 = LowerOrEqualThanEquilibriumConstraint([p, q1, lambda1], [1, -2, -1/2], 0)
     f1dual = GreaterOrEqualThanEquilibriumConstraint([q1], [1], 0)
     firm1 = ComplementarityEquilibriumConstraint(f1, f1dual)
     add_equilibrium_constraint(m, firm1)
@@ -250,6 +250,11 @@ function example_2()
     println("q1=" ,getvalue(q1))
     println("q2=" ,getvalue(q2))
     println("p=" ,getvalue(p))
+    println("e1=" ,getvalue(e1))
+    println("e2=" ,getvalue(e2))
+    println("lambda1=" ,getvalue(lambda1))
+    println("lambda2=" ,getvalue(lambda2))
+    println("pc02=" ,getvalue(pc02))
     writeLP(m, "lp", genericnames=false)
 end
 
