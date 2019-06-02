@@ -23,6 +23,14 @@ struct FreeEquilibriumConstraint <:EquilibriumConstraint
     rhs::Float64
 end
 
+struct IntervalEquilibriumConstraint <:EquilibriumConstraint
+    vars::Vector{Any}
+    coef::Vector{Float64}
+    rhs::Float64
+    LB::Float64
+    UB::Float64
+end
+
 struct EqualEquilibriumConstraint <:EquilibriumConstraint
     vars::Vector{Any}
     coef::Vector{Float64}
@@ -50,11 +58,10 @@ end
 
 function add_equilibrium_constraint(m, c::GreaterOrEqualThanEquilibriumConstraint, slack, M::Float64)
     # complementarity greater or equal constraints can be modeled using Fortuny-Amat McCarl Linearization [Complementarity modeling in energy markets]: 
-    # RHS ≤ x ⊥ y ≥ RHS
-    # RHS ≤ x ⊥ y ≥ RHS
+    # 0 ≤ x + RHS ⊥ y + RHS ≥ 0
     # equivalent to:
-    # RHS ≤ x ≤ Mu
-    # RHS ≤ y ≤ M(1 − u)
+    # 0 ≤ x + RHS ≤ Mu
+    # 0 ≤ y + RHS ≤ M(1 − u)
     @constraint(m,  0 <= sum(c.coef'*c.vars) + c.rhs)
     @constraint(m, sum(c.coef'*c.vars) + c.rhs <= M * slack)
     nothing
@@ -62,11 +69,11 @@ end
 
 function add_equilibrium_constraint(m, c::LowerOrEqualThanEquilibriumConstraint, slack, M::Float64)
     # complementarity lower or equal constraints can be modeled using Fortuny-Amat McCarl Linearization [Complementarity modeling in energy markets]: 
-    # RHS ≥ x ⊥ y ≥ RHS
-    # -RHS ≤ -x ⊥ y ≥ RHS
+    # 0 ≥ x + RHS ⊥ y + RHS ≥ 0
+    # 0 ≤ -x -RHS ⊥ y + RHS ≥ 0
     # equivalent to:
-    # -RHS ≤ -x ≤ Mu
-    # RHS ≤ y ≤ M(1 − u)
+    # 0 ≤ -x - RHS ≤ Mu
+    # 0 ≤ y + RHS ≤ M(1 − u)
     @constraint(m, 0 <= -sum(c.coef'*c.vars) - c.rhs)
     @constraint(m, -sum(c.coef'*c.vars) -c.rhs <= M * slack )
     nothing
@@ -90,6 +97,24 @@ function add_equilibrium_constraint(m, c::FreeEquilibriumConstraint, slack, M::F
     nothing
 end
 
+function add_equilibrium_constraint(m, c::IntervalEquilibriumConstraint, slack, M::Float64)
+    # complementarity interval constraints have two options: 
+    # 1. be binding at UB or LB
+    # 2. be relaxed in the defined interval
+    # free constraints have 2 ways to be binding (Modeling Mathematical Programs with Equilibrium Constraints in Pyomo pg 9:
+    # 1. x = UB 
+    # 2. x = LB 
+    active_aux = @variable(m, [1:2], Bin)
+
+    @constraint(m, c.coef'*c.vars >= c.UB *(active_aux[1]) + c.LB *(active_aux[2]) + c.LB * slack  )
+    @constraint(m, c.coef'*c.vars <= c.UB *(active_aux[1]) + c.LB *(active_aux[2]) + c.UB * slack )
+
+    # condition for fee variable slacks
+    @constraint(m, sum(active_aux) == 1 - slack)
+
+    nothing
+end
+
 function add_equilibrium_constraint(m, c::EqualEquilibriumConstraint, slack, M::Float64)
     # complementarity constraints have two options: 
     # 1. be binding at equality
@@ -104,53 +129,9 @@ function add_equilibrium_constraint(m, c::EqualEquilibriumConstraint, slack, M::
     nothing
 end
 
-using JuMP, Cbc#, GLPK, Ipopt
-# using Gurobi
-# using Plots
-# plotlyjs()
+using JuMP, Cbc
 
-M = 10^6
-
-function normal()
-    
-    M = 10^6
-    
-    m = Model(solver = CbcSolver())
-    
-    @variable(m, δ1, Bin)
-    @variable(m, δ2, Bin)
-    @variable(m, δ3, Bin)
-    @variable(m, δ4, Bin)
-    @variable(m, d >= 0)
-    @variable(m, q1 >= 0)
-    @variable(m, q2 >= 0)
-    @variable(m, p)
-    
-    @constraint(m, d <= M*δ1)
-    @constraint(m, q1 <= M*δ2)
-    @constraint(m, q2 <= M*δ3)
-    @constraint(m, p <= M*δ4)
-    
-    @constraint(m, (100 - d - p) >= M*(1 - δ1))
-    @constraint(m, (p - 2*q1) >= M*(1 - δ2))
-    @constraint(m, (p - q2) >= M*(1 - δ3))
-    @constraint(m, (d - q1 - q2) >= M*(1 - δ4))
-    
-    @constraint(m, (100 - d - p) <= 0)
-    @constraint(m, (p - 2*q1) <= 0)
-    @constraint(m, (p - q2) <= 0)
-    @constraint(m, (d - q1 - q2) == 0)
-    
-    @objective(m, Min, d - q1 - q2)
-    print(m)
-    status = solve(m)
-    
-    println(getvalue(d))
-    println(getvalue(q1))
-    println(getvalue(q2))
-    println(getvalue(p))
-end
-function novo()
+function small_complementarity_problem()
 
     m = Model(solver = CbcSolver())
     
@@ -198,5 +179,3 @@ function novo()
     println("p=" ,getvalue(p))
     writeLP(m, "lp", genericnames=false)
 end
-# novo()
-# normal()
