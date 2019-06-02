@@ -75,7 +75,7 @@ function add_equilibrium_constraint(m, c::LowerOrEqualThanEquilibriumConstraint,
     # 0 ≤ -x - RHS ≤ Mu
     # 0 ≤ y + RHS ≤ M(1 − u)
     @constraint(m, 0 <= -sum(c.coef'*c.vars) - c.rhs)
-    @constraint(m, -sum(c.coef'*c.vars) -c.rhs <= M * slack )
+    @constraint(m, -sum(c.coef'*c.vars) - c.rhs <= M * slack )
     nothing
 end
 
@@ -131,14 +131,11 @@ end
 
 using JuMP, Cbc
 
-function small_complementarity_problem()
+function example_1()
 
     m = Model(solver = CbcSolver())
     
-    @variable(m, δ1, Bin)
-    @variable(m, δ2, Bin)
-    @variable(m, δ3, Bin)
-    @variable(m, δ4, Bin)
+ 
     @variable(m, q1>=0)
     @variable(m, q2>=0)
     @variable(m, d >=0)
@@ -179,3 +176,84 @@ function small_complementarity_problem()
     println("p=" ,getvalue(p))
     writeLP(m, "lp", genericnames=false)
 end
+
+function example_2()
+
+    m = Model(solver = CbcSolver())
+ 
+    @variable(m, q1)
+    @variable(m, q2)
+    @variable(m, d)
+    @variable(m, p)
+    @variable(m, pc02)
+    @variable(m, e1)
+    @variable(m, lambda1)
+    @variable(m, e2)
+    @variable(m, lambda2)
+    
+    # Consumers
+    c = LowerOrEqualThanEquilibriumConstraint([d, p], [-1, -1], 100)
+    cdual = GreaterOrEqualThanEquilibriumConstraint([d], [1], 0)
+    consumer = ComplementarityEquilibriumConstraint(c, cdual)
+    add_equilibrium_constraint(m, consumer)
+    
+    # Firm 1
+    # utility function
+    f1 = LowerOrEqualThanEquilibriumConstraint([p, q1, lambda1], [1, -2, 1/2], 0)
+    f1dual = GreaterOrEqualThanEquilibriumConstraint([q1], [1], 0)
+    firm1 = ComplementarityEquilibriumConstraint(f1, f1dual)
+    add_equilibrium_constraint(m, firm1)
+    # co2 constraint
+    e1_cstr_1 = LowerOrEqualThanEquilibriumConstraint([pc02, lambda1], [-1, 1], 0)
+    e1_cstr_2 = GreaterOrEqualThanEquilibriumConstraint([e1], [1], 0)
+    c02_1_contraint = ComplementarityEquilibriumConstraint(e1_cstr_1, e1_cstr_2)
+    add_equilibrium_constraint(m, c02_1_contraint)
+    # lambda constraint
+    lambda1_cstr_1 = LowerOrEqualThanEquilibriumConstraint([q1, e1], [1/2, -1], 0)
+    lambda1_cstr_2 = GreaterOrEqualThanEquilibriumConstraint([lambda1], [1], 0)
+    c02_2_contraint = ComplementarityEquilibriumConstraint(lambda1_cstr_1, lambda1_cstr_2)
+    add_equilibrium_constraint(m, c02_2_contraint)
+
+    # Firm 2
+    f2 = LowerOrEqualThanEquilibriumConstraint([p, q2, lambda2], [1, -1, -1], 0)
+    f2dual = GreaterOrEqualThanEquilibriumConstraint([q2], [1], 0)
+    firm2 = ComplementarityEquilibriumConstraint(f2, f2dual)
+    add_equilibrium_constraint(m, firm2)
+    # co2 constraint
+    e2_cstr_1 = LowerOrEqualThanEquilibriumConstraint([pc02, lambda2], [-1, 1], 0)
+    e2_cstr_2 = GreaterOrEqualThanEquilibriumConstraint([e2], [1], 0)
+    c02_3_contraint = ComplementarityEquilibriumConstraint(e2_cstr_1, e2_cstr_2)
+    add_equilibrium_constraint(m, c02_3_contraint)
+    # lambda constraint
+    lambda2_cstr_1 = LowerOrEqualThanEquilibriumConstraint([q2, e2], [1, -1], 0)
+    lambda2_cstr_2 = GreaterOrEqualThanEquilibriumConstraint([lambda2], [1], 0)
+    c02_4_contraint = ComplementarityEquilibriumConstraint(lambda2_cstr_1, lambda2_cstr_2)
+    add_equilibrium_constraint(m, c02_4_contraint)
+    
+    # Market Clearing
+    cl = EqualEquilibriumConstraint([d, q1, q2], [1, -1, -1], 0)
+    cldual = FreeEquilibriumConstraint([p], [1], 0)
+    clearing = ComplementarityEquilibriumConstraint(cl, cldual)
+    add_equilibrium_constraint(m, clearing)
+    
+    # M.C.C. of CO2 permits
+    co2_permit_1 = LowerOrEqualThanEquilibriumConstraint([e1, e2], [1, 1], -30)
+    co2_permit_2 = GreaterOrEqualThanEquilibriumConstraint([pc02], [1], 0)
+    c02_5_contraint = ComplementarityEquilibriumConstraint(co2_permit_1, co2_permit_2)
+    add_equilibrium_constraint(m, c02_5_contraint)
+    
+    @objective(m, Min, d - q1 - q2 )
+    println(m)
+    status = solve(m)
+    println(status)
+    println("d=" , getvalue(d))
+    println("q1=" ,getvalue(q1))
+    println("q2=" ,getvalue(q2))
+    println("p=" ,getvalue(p))
+    writeLP(m, "lp", genericnames=false)
+end
+
+
+# run
+# example_1()
+example_2()
