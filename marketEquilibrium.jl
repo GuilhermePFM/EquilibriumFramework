@@ -47,37 +47,60 @@ function add_equilibrium_constraint(m, c::ComplementarityEquilibriumConstraint)
 
     nothing
 end
+
 function add_equilibrium_constraint(m, c::GreaterOrEqualThanEquilibriumConstraint, slack, M::Float64)
+    # complementarity greater or equal constraints can be modeled using Fortuny-Amat McCarl Linearization [Complementarity modeling in energy markets]: 
+    # RHS ≤ x ⊥ y ≥ RHS
+    # RHS ≤ x ⊥ y ≥ RHS
+    # equivalent to:
+    # RHS ≤ x ≤ Mu
+    # RHS ≤ y ≤ M(1 − u)
     @constraint(m,  0 <= sum(c.coef'*c.vars) + c.rhs)
     @constraint(m, sum(c.coef'*c.vars) + c.rhs <= M * slack)
     nothing
 end
+
 function add_equilibrium_constraint(m, c::LowerOrEqualThanEquilibriumConstraint, slack, M::Float64)
+    # complementarity lower or equal constraints can be modeled using Fortuny-Amat McCarl Linearization [Complementarity modeling in energy markets]: 
+    # RHS ≥ x ⊥ y ≥ RHS
+    # -RHS ≤ -x ⊥ y ≥ RHS
+    # equivalent to:
+    # -RHS ≤ -x ≤ Mu
+    # RHS ≤ y ≤ M(1 − u)
     @constraint(m, 0 <= -sum(c.coef'*c.vars) - c.rhs)
     @constraint(m, -sum(c.coef'*c.vars) -c.rhs <= M * slack )
     nothing
 end
+
 function add_equilibrium_constraint(m, c::FreeEquilibriumConstraint, slack, M::Float64)
-    @variable(m, slack_free[1:2], Bin)
+    # complementarity free constraints have two options: 
+    # 1. be binding at UB or LB (Inf in this case)
+    # 2. be relaxed in the defined interval (be free)
+    # free constraints have 2 ways to be binding (Modeling Mathematical Programs with Equilibrium Constraints in Pyomo pg 9:
+    # 1. x = UB (Inf)
+    # 2. x = LB (-Inf)
+    active_aux = @variable(m, [1:2], Bin)
 
-    # is in lower limit or upper limit
-    # @constraint(m, c.coef'*c.vars == M *(slack_free[1]) - M * slack_free[2])
-
-    @constraint(m, c.coef'*c.vars >= M *(slack_free[1]) - M *(slack_free[2]) - M * (1- slack)  )
-    @constraint(m, c.coef'*c.vars <= M *(slack_free[1]) - M *(slack_free[2])  + M * (1 - slack) )
-
-    # is in between
-    # @constraint(m, sum(c.coef'*c.vars) >= -M *  slack)
-    # @constraint(m, sum(c.coef'*c.vars) <=  M *  slack)
+    @constraint(m, c.coef'*c.vars >= M *(active_aux[1]) - M *(active_aux[2]) - M * slack  )
+    @constraint(m, c.coef'*c.vars <= M *(active_aux[1]) - M *(active_aux[2]) + M * slack )
 
     # condition for fee variable slacks
-    @constraint(m, sum(slack_free) == 1 - slack)
+    @constraint(m, sum(active_aux) == 1 - slack)
 
     nothing
 end
+
 function add_equilibrium_constraint(m, c::EqualEquilibriumConstraint, slack, M::Float64)
-    @constraint(m, sum(c.coef'*c.vars) >= c.rhs - M * (1-slack))
-    @constraint(m, sum(c.coef'*c.vars) <= c.rhs + M * (1-slack))
+    # complementarity constraints have two options: 
+    # 1. be binding at equality
+    # 2. be relaxed in the defined interval
+    # equality constraints have 2 ways to be relaxed (Modeling Mathematical Programs with Equilibrium Constraints in Pyomo pg 9:
+    # 1. g(x) >=0
+    # 2. g(x) <=0
+    @variable(m, slack_free_eq[1:2], Bin)
+    @constraint(m, sum(c.coef'*c.vars) >= c.rhs - M * slack_free_eq[1])
+    @constraint(m, sum(c.coef'*c.vars) <= c.rhs + M * slack_free_eq[2])
+    @constraint(m, sum(slack_free_eq) == slack)
     nothing
 end
 
@@ -159,7 +182,7 @@ function novo()
     add_equilibrium_constraint(m, firm2)
     
     # Market Clearing
-    cl = EqualEquilibriumConstraint([d, q1, q2], [1, -1, 1], 0)
+    cl = EqualEquilibriumConstraint([d, q1, q2], [1, -1, -1], 0)
     cldual = FreeEquilibriumConstraint([p], [1], 0)
     clearing = ComplementarityEquilibriumConstraint(cl, cldual)
     add_equilibrium_constraint(m, clearing)
@@ -175,5 +198,5 @@ function novo()
     println("p=" ,getvalue(p))
     writeLP(m, "lp", genericnames=false)
 end
-novo()
+# novo()
 # normal()
