@@ -20,11 +20,11 @@ function fixed_point_1(q1::Float64=0.0, q2::Float64=0.0;  maxit::Int = 40, ϵ::F
         if abs(q2 - q2_new) < ϵ && abs(q1 - q1_new) < ϵ || i == maxit
             q1 = q1_new
             q2 = q2_new
-            p = 100 - q1_new - q2_new, 4
+            p = 100 - q1_new - q2_new
             println("number of iterations =",i)
             println("q1* =", round(q1_new, 4))
             println("q2* =", round(q2_new, 4))
-            println("p* =", round(p))
+            println("p* =", round(p, 4))
             break
         end
         # update

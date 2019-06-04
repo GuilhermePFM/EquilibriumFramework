@@ -130,8 +130,8 @@ function iterativo()
             break
         end
     end
-    plot(p_vec, hcat(d_vec, q1_vec .+ q2_vec), title="Busca iterativa pelo equilibrio",label=["Demanda" "Oferta"],
-    xlabel="Quantidade", ylabel="Preço")
+    plot(p_vec, hcat(d_vec, q1_vec .+ q2_vec), title="Busca iterativa pelo equilibrio",label=["Oferta" "Demanda"],
+    xlabel="Preço", ylabel="Quantidade")
 end
 
 # iterativo com bissecao
@@ -304,5 +304,50 @@ end
 # iterativo()
 # iterativo_bissecao()
 # iterativo_co2()
-iterativo_rampa()
+# iterativo_rampa()
 
+# Modelo nao linear de rampa
+# --------------------------
+function f()
+    T = 1
+    g1_0 = 0
+    g2_0 = 0
+    d0 = 0
+    ramp_g1 = 1
+    ramp_g2 = 8
+
+    m = Model(solver = IpoptSolver( acceptable_tol = 1e-3))
+    # variables
+    @variable(m, 0<=g1[1:T+1]<=3)
+    @variable(m, 0<=g2[1:T+1]<=10)
+    @variable(m, d[1:T+1]>=0)
+    @variable(m, p[1:T+1])
+
+    # initial condition
+    @constraint(m, g1[1] == g1_0)
+    @constraint(m, g2[1] == g2_0)
+    @constraint(m, d[1] == d0)
+
+    @constraint(m, demand[t=1:T+1],  d[t] == g1[t] + g2[t] )
+
+    # ramp constraints
+    @constraint(m, ramp1_down[t=1:T], g1[t+1] - g1[t] <= ramp_g1)
+    @constraint(m, ramp1_up[t=2:T+1], g1[t-1] - g1[t] <= ramp_g1)
+
+    @constraint(m, ramp2_down[t=1:T], g2[t+1] - g2[t] <= ramp_g2)
+    @constraint(m, ramp2_up[t=2:T+1], g2[t-1] - g2[t] <= ramp_g2)
+
+    fob_g1 = @expression(m, sum(-g1[t]^2 +  g1[t] * p[t] + 3 for t in 2:T+1))
+    fob_g2 = @expression(m, sum(-g2[t]^2 + g2[t] * p[t] + 5   for t in 2:T+1))
+    fob_d  = @expression(m, sum((20 - p[t] ) * d[t] - 5/3 * d[t]^2 for t in 2:T+1))
+    @objective(m, Max, fob_g1 + fob_g2 + fob_d)
+    solve(m)
+
+    @show getvalue(g1)
+    @show getvalue(g2)
+    @show getvalue(d)
+    @show getvalue(d) - getvalue(g1) - getvalue(g2)
+    @show getvalue(p)
+    @show getobjectivevalue(m)
+end
+f()
