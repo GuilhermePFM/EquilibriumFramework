@@ -1,2 +1,2 @@
 # EquilibriumFramework
-Optimization framework for solving Equilibrium(MCP) problems in Julia language
+Framework for building complementarity problems(MCP) as MIP problems in Julia language and solving with JuMP.
