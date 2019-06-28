@@ -44,6 +44,17 @@ struct ComplementarityEquilibriumConstraint
     ComplementarityEquilibriumConstraint(cstr1, cstr2) = new(cstr1, cstr2, 1e8)
 end
 
+struct marketEquilibriumModel
+    m::JuMP.Model
+    cstrs::Array{ComplementarityEquilibriumConstraint}
+    marketEquilibriumModel() = new(Model(solver = CbcSolver()), ComplementarityEquilibriumConstraint[])
+end
+
+function add_equilibrium_constraint(m::marketEquilibriumModel, c::ComplementarityEquilibriumConstraint)
+    push!(m.cstrs, c)
+    nothing
+end
+
 function add_equilibrium_constraint(m, c::ComplementarityEquilibriumConstraint)
     slack = @variable(m, [1], Bin)
     
@@ -87,13 +98,13 @@ function add_equilibrium_constraint(m, c::FreeEquilibriumConstraint, slack, M::F
     # 1. x = UB (Inf)
     # 2. x = LB (-Inf)
     active_aux = @variable(m, [1:2], Bin)
-
+    
     @constraint(m, c.coef'*c.vars >= M *(active_aux[1]) - M *(active_aux[2]) - M * slack  )
     @constraint(m, c.coef'*c.vars <= M *(active_aux[1]) - M *(active_aux[2]) + M * slack )
-
+    
     # condition for fee variable slacks
     @constraint(m, sum(active_aux) == 1 - slack)
-
+    
     nothing
 end
 
@@ -256,7 +267,7 @@ function example_2()
 end
 
 function example_3()
-    T = 1
+    T = 2
     g1_0 = 0
     g2_0 = 0
     d0 = 0
@@ -279,6 +290,11 @@ function example_3()
     @variable(m, alpha2[1:T+1])
     @variable(m, beta2[1:T+1])
     
+    # @constraint(m, [t=2:T+1],alpha2[t] == 0.0)
+    # @constraint(m, [t=2:T+1],alpha1[t] == 0.0)
+    # @constraint(m, [t=2:T+1],beta1[t] == 0.0)
+    # @constraint(m, [t=2:T+1], beta2[t] == 0.0)
+
     @constraint(m, g1[1] == g1_0)
     @constraint(m, g2[1] == g2_0)
     @constraint(m, d[1] == d0)
@@ -327,7 +343,7 @@ function example_3()
         firm2_2 = ComplementarityEquilibriumConstraint(f2_2, f2dual_2)
         add_equilibrium_constraint(m, firm2_2)
         
-        # subida
+        # # subida
         f2_3 = LowerOrEqualThanEquilibriumConstraint([g2[t], g2[t-1]], [1, -1], -8)
         f2dual_3 = GreaterOrEqualThanEquilibriumConstraint([alpha2[t]], [1], 0)
         firm2_3 = ComplementarityEquilibriumConstraint(f2_3, f2dual_3)
@@ -339,22 +355,24 @@ function example_3()
         add_equilibrium_constraint(m, firm2_4)
     end
     @variable(m, s[1:T+1] >=0)
+    @constraint(m, [t=1:T], s[t] >= d[t] - g1[t] - g2[t])
+    @constraint(m, [t=1:T], s[t] >= g1[t] + g2[t] - d[t] )
     @objective(m, Min, sum(s))
     println(m)
     status = solve(m)
     println(status)
     println("s=" , getvalue(s))
     println("d=" , getvalue(d))
-    println("g1=" ,getvalue(g1))
-    println("g2=" ,getvalue(g2))
-    println("p=" ,getvalue(p))
-    println("lambda1=" ,getvalue(lambda1))
-    println("lambda2=" ,getvalue(lambda2))
-    println("alpha1=" ,getvalue(alpha1))
-    println("alpha2=" ,getvalue(alpha2))
-    println("beta1=" ,getvalue(beta1))
-    println("beta2=" ,getvalue(beta2))
-    println("fobj=" ,getobjectivevalue(m))
+    println("g1=", getvalue(g1))
+    println("g2=", getvalue(g2))
+    println("p=", getvalue(p))
+    println("lambda1=", getvalue(lambda1))
+    println("lambda2=", getvalue(lambda2))
+    println("alpha1=", getvalue(alpha1))
+    println("alpha2=", getvalue(alpha2))
+    println("beta1=", getvalue(beta1))
+    println("beta2=", getvalue(beta2))
+    println("fobj=", getobjectivevalue(m))
     fob_g1 = -getvalue(g1[2])^2 + getvalue(g1[2]) * getvalue(p[2]) + 3
     fob_g2 = -getvalue(g2[2])^2 + getvalue(g2[2]) * getvalue(p[2]) + 5  
     fob_d  = (20 - getvalue(p[2]) ) * getvalue(d[2]) - 5/3 * getvalue(d[2])^2 
@@ -362,7 +380,153 @@ function example_3()
     # writeLP(m, "lp", genericnames=false)
 end
 
+function example_4()
+
+    m = Model(solver = CbcSolver())
+    eq_m = marketEquilibriumModel()
+ 
+    @variable(m, g1>=0)
+    @variable(m, g2>=0)
+    @variable(m, q1_l >=0)
+    @variable(m, q2_l >=0)
+    @variable(m, qc_l >=0)
+    @variable(m, q1_e >=0)
+    @variable(m, q2_e >=0)
+    @variable(m, qc_e >=0)
+    @variable(m, pe)
+    @variable(m, pl)
+    @variable(m, beta1>=0)
+    @variable(m, beta2>=0)
+    @variable(m, gamma1>=0)
+    @variable(m, gamma2>=0)
+    @variable(m, alpha>=0)
+    @variable(m, pi)
+    @variable(m, I1>=0)
+    @variable(m, I2>=0)
+
+    d = 100
+    c1 = 200
+    c2 = 300
+    k1 = 6
+    k2 = 5
+    
+    #g1
+    c = LowerOrEqualThanEquilibriumConstraint([beta1, gamma1], [1, 1], -k1)
+    cdual = GreaterOrEqualThanEquilibriumConstraint([I1], [1], 0)
+    consumer = ComplementarityEquilibriumConstraint(c, cdual)
+    add_equilibrium_constraint(m, consumer)
+    add_equilibrium_constraint(eq_m, consumer)
+    
+    # g2
+    c = LowerOrEqualThanEquilibriumConstraint([beta2, gamma2], [1, 1], -k2)
+    cdual = GreaterOrEqualThanEquilibriumConstraint([I2], [1], 0)
+    consumer = ComplementarityEquilibriumConstraint(c, cdual)
+    add_equilibrium_constraint(m, consumer)
+    add_equilibrium_constraint(eq_m, consumer)
+    
+    # g1 2
+    f1 = LowerOrEqualThanEquilibriumConstraint([beta1, pi], [-1, +1], -c1)
+    f1dual = GreaterOrEqualThanEquilibriumConstraint([g1], [1], 0)
+    firm1 = ComplementarityEquilibriumConstraint(f1, f1dual)
+    add_equilibrium_constraint(m, firm1)
+    add_equilibrium_constraint(eq_m, firm1)
+    # g2 2
+    f1 = LowerOrEqualThanEquilibriumConstraint([beta2, pi], [-1, +1], -c2)
+    f1dual = GreaterOrEqualThanEquilibriumConstraint([g2], [1], 0)
+    firm1 = ComplementarityEquilibriumConstraint(f1, f1dual)
+    add_equilibrium_constraint(m, firm1)
+    add_equilibrium_constraint(eq_m, firm1)
+    
+    # g1 3
+    f2 = LowerOrEqualThanEquilibriumConstraint([pl, gamma1], [1, -1], 0)
+    f2dual = GreaterOrEqualThanEquilibriumConstraint([q1_l], [1], 0)
+    firm2 = ComplementarityEquilibriumConstraint(f2, f2dual)
+    add_equilibrium_constraint(m, firm2)
+    add_equilibrium_constraint(eq_m, firm2)
+    # g2 3
+    f2 = LowerOrEqualThanEquilibriumConstraint([pl, gamma2], [1, -1], 0)
+    f2dual = GreaterOrEqualThanEquilibriumConstraint([q2_l], [1], 0)
+    firm2 = ComplementarityEquilibriumConstraint(f2, f2dual)
+    add_equilibrium_constraint(m, firm2)
+    add_equilibrium_constraint(eq_m, firm2)
+    # g1 4 - energia
+    f2 = LowerOrEqualThanEquilibriumConstraint([pe], [1], 0)
+    f2dual = GreaterOrEqualThanEquilibriumConstraint([q1_e], [1], 0)
+    firm2 = ComplementarityEquilibriumConstraint(f2, f2dual)
+    add_equilibrium_constraint(m, firm2)
+    add_equilibrium_constraint(eq_m, firm2)
+    # g2 4 - energia
+    f2 = LowerOrEqualThanEquilibriumConstraint([pe], [1], 0)
+    f2dual = GreaterOrEqualThanEquilibriumConstraint([q2_e], [1], 0)
+    firm2 = ComplementarityEquilibriumConstraint(f2, f2dual)
+    add_equilibrium_constraint(m, firm2)
+    add_equilibrium_constraint(eq_m, firm2)
+    # consumidor
+    f2 = LowerOrEqualThanEquilibriumConstraint([pe], [-1], 0)
+    f2dual = GreaterOrEqualThanEquilibriumConstraint([qc_e], [1], 0)
+    firm2 = ComplementarityEquilibriumConstraint(f2, f2dual)
+    add_equilibrium_constraint(m, firm2)
+    add_equilibrium_constraint(eq_m, firm2)
+    # consumidor 2 
+    f2 = LowerOrEqualThanEquilibriumConstraint([pl, alpha], [-1, 1], 0)
+    f2dual = GreaterOrEqualThanEquilibriumConstraint([qc_l], [1], 0)
+    firm2 = ComplementarityEquilibriumConstraint(f2, f2dual)
+    add_equilibrium_constraint(m, firm2)
+    add_equilibrium_constraint(eq_m, firm2)
+    
+    # Market Clearing 1
+    cl = EqualEquilibriumConstraint([g1, g2], [1, 1], d)
+    cldual = FreeEquilibriumConstraint([pi], [1], 0)
+    clearing = ComplementarityEquilibriumConstraint(cl, cldual)
+    add_equilibrium_constraint(m, clearing)
+    add_equilibrium_constraint(eq_m, clearing)
+    # Market Clearing 2
+    cl = EqualEquilibriumConstraint([q1_e, q2_e, qc_e], [1, 1, -1], 0)
+    cldual = FreeEquilibriumConstraint([pe], [1], 0)
+    clearing = ComplementarityEquilibriumConstraint(cl, cldual)
+    add_equilibrium_constraint(m, clearing)
+    add_equilibrium_constraint(eq_m, clearing)
+    # Market Clearing 3
+    cl = EqualEquilibriumConstraint([q1_l, q2_l, qc_l], [1, 1, -1], 0)
+    cldual = FreeEquilibriumConstraint([pl], [1], 0)
+    clearing = ComplementarityEquilibriumConstraint(cl, cldual)
+    add_equilibrium_constraint(m, clearing)
+    add_equilibrium_constraint(eq_m, clearing)
+    
+    @objective(m, Min, g1+g2-d)
+    println(m)
+    status = solve(m)
+    println(status)
+    # println("d=" , getvalue(d))
+    println("q1_l=" ,getvalue(q1_l))
+    println("q2_l=" ,getvalue(q2_l))
+    println("qc_l=" ,getvalue(qc_l))
+    println("qc_l=" ,getvalue(qc_l))
+    println("g1=",getvalue(g1))
+    println("g2=",getvalue(g2))
+    println("q1_l=",getvalue(q1_l))
+    println("q2_l=",getvalue(q2_l))
+    println("qc_l=",getvalue(qc_l))
+    println("q1_e=",getvalue(q1_e))
+    println("q2_e=",getvalue(q2_e))
+    println("qc_e=",getvalue(qc_e))
+    println("pe=",getvalue(pe))
+    println("pl=",getvalue(pl))
+    println("beta1=",getvalue(beta1))
+    println("beta2=",getvalue(beta2))
+    println("gamma1=",getvalue(gamma1))
+    println("alpha=",getvalue(alpha))
+    println("pi=",getvalue(pi))
+    println("I1=",getvalue(I1))
+    println("I2=",getvalue(I2))
+    println("gamma2=",getvalue(gamma2))
+    writeLP(m, "lp", genericnames=false)
+
+    println("aaaaaaaaaaaaaaq")
+    print(eq_m)
+end
 # run
 # example_1()
 # example_2()
-example_3()
+# example_3()
+example_4()
