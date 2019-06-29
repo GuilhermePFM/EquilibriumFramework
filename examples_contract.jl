@@ -152,6 +152,7 @@ function SocialWelfare_2( path , d , c1 , c2 , k1 , k2 )
     consumer = ComplementarityEquilibriumConstraint(c, cdual)
     add_equilibrium_constraint(m.m, consumer)
     add_equilibrium_constraint(m, consumer)
+    
     # g2
     c = LowerOrEqualThanEquilibriumConstraint([beta2, gamma2], [1, 1], -k2)
     cdual = GreaterOrEqualThanEquilibriumConstraint([I2], [1], 0)
@@ -160,13 +161,13 @@ function SocialWelfare_2( path , d , c1 , c2 , k1 , k2 )
     add_equilibrium_constraint(m, consumer)
     
     # g1 2
-    f1 = LowerOrEqualThanEquilibriumConstraint([beta1, pi], [-1, +1], -c1)
+    f1 = LowerOrEqualThanEquilibriumConstraint([beta1, pi], [-1, 1], -c1)
     f1dual = GreaterOrEqualThanEquilibriumConstraint([g1], [1], 0)
     firm1 = ComplementarityEquilibriumConstraint(f1, f1dual)
     add_equilibrium_constraint(m.m, firm1)
     add_equilibrium_constraint(m, firm1)
     # g2 2
-    f1 = LowerOrEqualThanEquilibriumConstraint([beta2, pi], [-1, +1], -c2)
+    f1 = LowerOrEqualThanEquilibriumConstraint([beta2, pi], [-1, 1], -c2)
     f1dual = GreaterOrEqualThanEquilibriumConstraint([g2], [1], 0)
     firm1 = ComplementarityEquilibriumConstraint(f1, f1dual)
     add_equilibrium_constraint(m.m, firm1)
@@ -182,7 +183,6 @@ function SocialWelfare_2( path , d , c1 , c2 , k1 , k2 )
     f2 = LowerOrEqualThanEquilibriumConstraint([pl, gamma2], [1, -1], 0)
     f2dual = GreaterOrEqualThanEquilibriumConstraint([q2_l], [1], 0)
     firm2 = ComplementarityEquilibriumConstraint(f2, f2dual)
-    add_equilibrium_constraint(m.m, firm2)
     add_equilibrium_constraint(m, firm2)
     # g1 4 - energia
     # f2 = LowerOrEqualThanEquilibriumConstraint([pe], [1], 0)
@@ -224,7 +224,7 @@ function SocialWelfare_2( path , d , c1 , c2 , k1 , k2 )
     firm2 = ComplementarityEquilibriumConstraint(f2, f2dual)
     add_equilibrium_constraint(m.m, firm2)
     add_equilibrium_constraint(m, firm2)
-    
+
     # consumidor
     # f2 = LowerOrEqualThanEquilibriumConstraint([pe], [-1], 0)
     # f2dual = GreaterOrEqualThanEquilibriumConstraint([qc_e], [1], 0)
@@ -247,7 +247,7 @@ function SocialWelfare_2( path , d , c1 , c2 , k1 , k2 )
     add_equilibrium_constraint(m, firm2)
     
     # Market Clearing 1
-    cl = EqualEquilibriumConstraint([g1, g2], [1, 1], -d)
+    cl = EqualEquilibriumConstraint([g1, g2], [1, 1], d)
     cldual = FreeEquilibriumConstraint([pi], [1], 0)
     clearing = ComplementarityEquilibriumConstraint(cl, cldual)
     add_equilibrium_constraint(m.m, clearing)
@@ -335,7 +335,7 @@ end
 #=========================================================================#
 
 #--- Defining constants
-path = "D:\\Lastro_Energia\\Lastro_Energia"
+path = "D:\\Dropbox (PSR)\\Mateus\\Diversos\\Lastro_Energia"
 d = 100
 c1 = 200
 c2 = 300
@@ -344,5 +344,5 @@ k2 = 601
 
 #--- Calling functions
 
-# SocialWelfare_1( path , d , c1 , c2 , k1 , k2 );
+#SocialWelfare_1( path , d , c1 , c2 , k1 , k2 );
 SocialWelfare_2( path , d , c1 , c2 , k1 , k2 );
