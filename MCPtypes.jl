@@ -1,6 +1,4 @@
-
 abstract type EquilibriumConstraint end
-
 
 struct GreaterOrEqualThanEquilibriumConstraint <:EquilibriumConstraint
     vars::Vector{Any}
@@ -96,12 +94,12 @@ function add_equilibrium_constraint(m, c::FreeEquilibriumConstraint, slack, M::F
     # 2. x = LB (-Inf)
     active_aux = @variable(m, [1:2], Bin)
     
-    @constraint(m, c.coef'*c.vars >= M *(active_aux[1]) - M *(active_aux[2]) - M * slack  )
-    @constraint(m, c.coef'*c.vars <= M *(active_aux[1]) - M *(active_aux[2]) + M * slack )
-    
+    @constraint(m, sum( c.coef'*c.vars ) >= M *(active_aux[1]) - M *(active_aux[2]) - M * slack  )
+    @constraint(m, sum( c.coef'*c.vars ) <= M *(active_aux[1]) - M *(active_aux[2]) + M * slack )
+
     # condition for fee variable slacks
     @constraint(m, sum(active_aux) == 1 - slack)
-    
+
     nothing
 end
 
@@ -130,9 +128,12 @@ function add_equilibrium_constraint(m, c::EqualEquilibriumConstraint, slack, M::
     # equality constraints have 2 ways to be relaxed (Modeling Mathematical Programs with Equilibrium Constraints in Pyomo pg 9:
     # 1. g(x) >=0
     # 2. g(x) <=0
+    
     @variable(m, slack_free_eq[1:2], Bin)
     @constraint(m, sum(c.coef'*c.vars) >= c.rhs - M * slack_free_eq[1])
     @constraint(m, sum(c.coef'*c.vars) <= c.rhs + M * slack_free_eq[2])
+    
     @constraint(m, sum(slack_free_eq) == slack)
+    
     nothing
 end
