@@ -1,14 +1,15 @@
 
 # OVERLOAD
-# import Base.string
-# function string(exp::JuMP.GenericAffExpr{Float64,JuMP.Variable})
-#     io = IOBuffer()
-#     println(io,exp)
-#     str =String(take!(io))
-#     return str[1:end-1]
-# end
+import Base.string
+function string(exp::JuMP.GenericAffExpr{Float64,JuMP.Variable})
+    io = IOBuffer()
+    println(io,exp)
+    str =String(take!(io))
+    return str[1:end-1]
+end
 
 # Framework methods:
+import Base.print
 function print(m::marketEquilibriumModel)
     str = ""
     for c in m.cstrs
@@ -28,7 +29,7 @@ function string(c::ComplementarityEquilibriumConstraint)
 end
 
 function string(c::GreaterOrEqualThanEquilibriumConstraint)
-    return "0 <= " * string(sum(c.coef'*c.vars) + c.rhs)
+    return string(sum(c.coef'*c.vars) + c.rhs) * " >= 0"
 end
 
 function string(c::LowerOrEqualThanEquilibriumConstraint)
