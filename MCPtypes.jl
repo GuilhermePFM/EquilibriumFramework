@@ -1,3 +1,4 @@
+using JuMP
 abstract type EquilibriumConstraint end
 
 struct GreaterOrEqualThanEquilibriumConstraint <:EquilibriumConstraint
