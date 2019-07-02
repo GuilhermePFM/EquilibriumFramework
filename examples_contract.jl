@@ -1,6 +1,7 @@
 include("marketEquilibrium.jl")
 using JuMP
 using Cbc
+using Complementarity
 
 #=========================================================================#
 #=====                  Social Welfare - Approach 2                  =====#
@@ -112,7 +113,7 @@ function SocialWelfare_1( path , d , c1 , c2 , k1 , k2 )
     println("Gamma 2 = " , round( gamma2 , 3 ) )
     println("Alpha   = " , round( alpha , 3 ) )
     
-    writeLP( m, joinpath( path , "debug.lp" ) , genericnames=false )
+    # writeLP( m, joinpath( path , "debug.lp" ) , genericnames=false )
 
     return nothing
 end
@@ -249,28 +250,45 @@ function SocialWelfare_2( path , d , c1 , c2 , k1 , k2 )
     add_equilibrium_constraint(m, firm2)
     
     # Market Clearing 1
-    cl = EqualEquilibriumConstraint([g1, g2], [1, 1], -d)
-    cldual = FreeEquilibriumConstraint([pi], [1], 0)
+    cl = LowerOrEqualThanEquilibriumConstraint([g1, g2], [-1, -1], d)
+    cldual = GreaterOrEqualThanEquilibriumConstraint([pi], [1], 0)
     clearing = ComplementarityEquilibriumConstraint(cl, cldual)
     add_equilibrium_constraint(m.m, clearing)
     add_equilibrium_constraint(m, clearing)
-
+    # cl = EqualEquilibriumConstraint([g1, g2], [1, 1], -d)
+    # cldual = FreeEquilibriumConstraint([pi], [1], 0)
+    # clearing = ComplementarityEquilibriumConstraint(cl, cldual)
+    # add_equilibrium_constraint(m.m, clearing)
+    # add_equilibrium_constraint(m, clearing)
+ 
     # Market Clearing 2
-    cl = EqualEquilibriumConstraint([q1_e, q2_e, qc_e], [1, 1, -1], 0)
-    cldual = FreeEquilibriumConstraint([pe], [1], 0)
+    cl = LowerOrEqualThanEquilibriumConstraint([q1_e, q2_e, qc_e], [-1, -1, 1], 0)
+    cldual = GreaterOrEqualThanEquilibriumConstraint([pe], [1], 0)
     clearing = ComplementarityEquilibriumConstraint(cl, cldual)
     add_equilibrium_constraint(m.m, clearing)
     add_equilibrium_constraint(m, clearing)
+    # cl = EqualEquilibriumConstraint([q1_e, q2_e, qc_e], [1, 1, -1], 0)
+    # cldual = FreeEquilibriumConstraint([pe], [1], 0)
+    # clearing = ComplementarityEquilibriumConstraint(cl, cldual)
+    # add_equilibrium_constraint(m.m, clearing)
+    # add_equilibrium_constraint(m, clearing)
     
     # Market Clearing 3
-    cl = EqualEquilibriumConstraint([q1_l, q2_l, qc_l], [1, 1, -1], 0)
-    cldual = FreeEquilibriumConstraint([pl], [1], 0)
+    cl = LowerOrEqualThanEquilibriumConstraint([q1_l, q2_l, qc_l], [-1, -1, 1], 0)
+    cldual = GreaterOrEqualThanEquilibriumConstraint([pl], [1], 0)
     clearing = ComplementarityEquilibriumConstraint(cl, cldual)
     add_equilibrium_constraint(m.m, clearing)
     add_equilibrium_constraint(m, clearing)
+    # cl = EqualEquilibriumConstraint([q1_l, q2_l, qc_l], [1, 1, -1], 0)
+    # cldual = FreeEquilibriumConstraint([pl], [1], 0)
+    # clearing = ComplementarityEquilibriumConstraint(cl, cldual)
+    # add_equilibrium_constraint(m.m, clearing)
+    # add_equilibrium_constraint(m, clearing)
     
-    #@objective(m, Min, g1+g2-d)
-    
+    # @variable(m.m, a>=0)
+    # @constraint(m.m, a>= g1+g2-d)
+    # @constraint(m.m, a>= d -g1-g2)
+    # @objective(m.m, Min, a)
     status = solve(m.m)
     #println(status)
     # println("d=" , getvalue(d))
@@ -641,6 +659,11 @@ end
 #--- Defining constants
 path = "D:\\Dropbox (PSR)\\Mateus\\Diversos\\Lastro_Energia"
 d = 100
+# c1 = 1
+# c2 = 2
+# k1 = 1
+# k2 = 2
+d = 100
 c1 = 200
 c2 = 300
 k1 = 600
@@ -648,5 +671,5 @@ k2 = 601
 
 #--- Calling functions
 
-#SocialWelfare_1( path , d , c1 , c2 , k1 , k2 );
-SocialWelfare_2( path , d , c1 , c2 , k1 , k2 );
+# SocialWelfare_1( path , d , c1 , c2 , k1 , k2 );
+# SocialWelfare_2( path , d , c1 , c2 , k1 , k2 );
