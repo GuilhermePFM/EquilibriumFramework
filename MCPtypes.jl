@@ -130,7 +130,7 @@ function add_equilibrium_constraint(m, c::EqualEquilibriumConstraint, slack, M::
     # 1. g(x) >=0
     # 2. g(x) <=0
     
-    @variable(m, slack_free_eq[1:2], Bin)
+    slack_free_eq=@variable(m, [1:2], Bin)
     @constraint(m, sum(c.coef'*c.vars) >= c.rhs - M * slack_free_eq[1])
     @constraint(m, sum(c.coef'*c.vars) <= c.rhs + M * slack_free_eq[2])
     
