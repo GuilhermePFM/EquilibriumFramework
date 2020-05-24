@@ -309,7 +309,7 @@ end
 # Modelo nao linear de rampa
 # --------------------------
 function f()
-    T = 1
+    T = 2
     g1_0 = 0
     g2_0 = 0
     d0 = 0
