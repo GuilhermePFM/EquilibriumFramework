@@ -65,7 +65,7 @@ function SocialWelfare_1( path , d , c1 , c2 , k1 , k2 )
     pi = getdual( balanco_spot )
     pl = getdual( balanco_lastro )
     pe = getdual( balanco_energia )
-
+    println("# Max welfare                                        #")
     println("#----------------------------------------------------#")
     println("#-----               Investimento               -----#")
     println("#----------------------------------------------------#\n")
@@ -295,7 +295,7 @@ function SocialWelfare_2( path , d , c1 , c2 , k1 , k2 )
     print(m)
     println(status)
     println("\n\n")
-
+    println("# MCP as MIP (Equilibrium framework)                 #")
     println("#----------------------------------------------------#")
     println("#-----               Investimento               -----#")
     println("#----------------------------------------------------#\n")
@@ -436,7 +436,7 @@ function SocialWelfare_3( path , d , c1 , c2 , k1 , k2 )
     status = solve(m)
     #println(status)
     # println("d=" , getvalue(d))
-
+    println("# Complementarity Package:                           #")
     println("#----------------------------------------------------#")
     println("#-----               Investimento               -----#")
     println("#----------------------------------------------------#\n")
@@ -596,7 +596,7 @@ function SocialWelfare_4( path , d , c1 , c2 , k1 , k2 )
     status = solve(m)
     #println(status)
     # println("d=" , getvalue(d))
-
+    println("# Non Linear multiplication                          #")
     println("#----------------------------------------------------#")
     println("#-----               Investimento               -----#")
     println("#----------------------------------------------------#\n")
@@ -672,4 +672,6 @@ k2 = 601
 #--- Calling functions
 
 # SocialWelfare_1( path , d , c1 , c2 , k1 , k2 );
-# SocialWelfare_2( path , d , c1 , c2 , k1 , k2 );
+SocialWelfare_2( path , d , c1 , c2 , k1 , k2 );
+# SocialWelfare_3( path , d , c1 , c2 , k1 , k2 );
+# SocialWelfare_4( path , d , c1 , c2 , k1 , k2 );
